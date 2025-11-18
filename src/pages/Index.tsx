@@ -7,14 +7,9 @@ import AdminDashboard from '@/components/AdminDashboard';
 import TeacherDashboard from '@/components/TeacherDashboard';
 import StudentDashboard from '@/components/StudentDashboard';
 import ParentDashboard from '@/components/ParentDashboard';
+import type { User, Teacher, Student, Parent } from '@/types';
 
 type UserRole = 'admin' | 'teacher' | 'student' | 'parent' | null;
-
-interface User {
-  login: string;
-  role: UserRole;
-  name: string;
-}
 
 const Index = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -35,29 +30,46 @@ const Index = () => {
   const handleLogin = () => {
     setError('');
     
-    if (login !== '22') {
-      setError('Неверный логин');
+    if (login === 'admin' && password === '1qaz2wsx') {
+      const user: User = { login: 'admin', password: '1qaz2wsx', role: 'admin', name: 'Администратор', id: 'admin' };
+      setCurrentUser(user);
+      setIsAuthenticated(true);
+      localStorage.setItem('currentUser', JSON.stringify(user));
       return;
     }
 
-    let user: User;
-    
-    if (password === '1qaz2wsx') {
-      user = { login: '22', role: 'admin', name: 'Администратор' };
-    } else if (password === 'teacher') {
-      user = { login: '22', role: 'teacher', name: 'Учитель Иванов И.И.' };
-    } else if (password === 'student') {
-      user = { login: '22', role: 'student', name: 'Ученик Петров П.П.' };
-    } else if (password === 'parent') {
-      user = { login: '22', role: 'parent', name: 'Родитель Сидорова С.С.' };
-    } else {
-      setError('Неверный пароль');
+    const teachers: Teacher[] = JSON.parse(localStorage.getItem('teachers') || '[]');
+    const students: Student[] = JSON.parse(localStorage.getItem('students') || '[]');
+    const parents: Parent[] = JSON.parse(localStorage.getItem('parents') || '[]');
+
+    const teacher = teachers.find(t => t.login === login && t.password === password);
+    if (teacher) {
+      const user: User = { login: teacher.login, password: teacher.password, role: 'teacher', name: teacher.name, id: teacher.id };
+      setCurrentUser(user);
+      setIsAuthenticated(true);
+      localStorage.setItem('currentUser', JSON.stringify(user));
       return;
     }
 
-    setCurrentUser(user);
-    setIsAuthenticated(true);
-    localStorage.setItem('currentUser', JSON.stringify(user));
+    const student = students.find(s => s.login === login && s.password === password);
+    if (student) {
+      const user: User = { login: student.login, password: student.password, role: 'student', name: student.name, id: student.id };
+      setCurrentUser(user);
+      setIsAuthenticated(true);
+      localStorage.setItem('currentUser', JSON.stringify(user));
+      return;
+    }
+
+    const parent = parents.find(p => p.login === login && p.password === password);
+    if (parent) {
+      const user: User = { login: parent.login, password: parent.password, role: 'parent', name: parent.name, id: parent.id };
+      setCurrentUser(user);
+      setIsAuthenticated(true);
+      localStorage.setItem('currentUser', JSON.stringify(user));
+      return;
+    }
+
+    setError('Неверный логин или пароль');
   };
 
   const handleLogout = () => {
@@ -119,14 +131,6 @@ const Index = () => {
               <Icon name="LogIn" size={20} className="mr-2" />
               Войти в систему
             </Button>
-            <div className="pt-4 border-t text-xs text-muted-foreground space-y-1">
-              <p className="font-medium text-foreground mb-2">Тестовые доступы:</p>
-              <p>• Логин для всех: <span className="font-mono bg-muted px-2 py-0.5 rounded">22</span></p>
-              <p>• Админ: <span className="font-mono bg-muted px-2 py-0.5 rounded">1qaz2wsx</span></p>
-              <p>• Учитель: <span className="font-mono bg-muted px-2 py-0.5 rounded">teacher</span></p>
-              <p>• Ученик: <span className="font-mono bg-muted px-2 py-0.5 rounded">student</span></p>
-              <p>• Родитель: <span className="font-mono bg-muted px-2 py-0.5 rounded">parent</span></p>
-            </div>
           </CardContent>
         </Card>
       </div>
@@ -157,9 +161,9 @@ const Index = () => {
 
       <main className="container mx-auto px-4 py-8">
         {currentUser.role === 'admin' && <AdminDashboard />}
-        {currentUser.role === 'teacher' && <TeacherDashboard />}
-        {currentUser.role === 'student' && <StudentDashboard />}
-        {currentUser.role === 'parent' && <ParentDashboard />}
+        {currentUser.role === 'teacher' && <TeacherDashboard userId={currentUser.id} />}
+        {currentUser.role === 'student' && <StudentDashboard userId={currentUser.id} />}
+        {currentUser.role === 'parent' && <ParentDashboard userId={currentUser.id} />}
       </main>
     </div>
   );

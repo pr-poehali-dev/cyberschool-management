@@ -3,37 +3,55 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import Icon from '@/components/ui/icon';
+import type { Student, Class, Schedule, Homework } from '@/types';
 
-const StudentDashboard = () => {
-  const [myClass, setMyClass] = useState<any>(null);
-  const [schedule, setSchedule] = useState<any[]>([]);
-  const [homeworks, setHomeworks] = useState<any[]>([]);
-  const [grades, setGrades] = useState<any>({});
+interface Props {
+  userId: string;
+}
+
+const StudentDashboard = ({ userId }: Props) => {
+  const [student, setStudent] = useState<Student | null>(null);
+  const [myClass, setMyClass] = useState<Class | null>(null);
+  const [schedule, setSchedule] = useState<Schedule[]>([]);
+  const [homeworks, setHomeworks] = useState<Homework[]>([]);
 
   useEffect(() => {
-    const classes = JSON.parse(localStorage.getItem('classes') || '[]');
-    const schedules = JSON.parse(localStorage.getItem('schedules') || '[]');
-    const allHomeworks = JSON.parse(localStorage.getItem('homeworks') || '[]');
-    const students = JSON.parse(localStorage.getItem('students') || '[]');
+    const students: Student[] = JSON.parse(localStorage.getItem('students') || '[]');
+    const currentStudent = students.find(s => s.id === userId);
+    setStudent(currentStudent || null);
 
-    if (classes.length > 0) {
-      setMyClass(classes[0]);
-      const classSchedule = schedules.filter((s: any) => s.classId === classes[0].id);
-      setSchedule(classSchedule);
-      const classHomework = allHomeworks.filter((h: any) => h.classId === classes[0].id);
-      setHomeworks(classHomework);
-    }
+    if (currentStudent) {
+      const classes: Class[] = JSON.parse(localStorage.getItem('classes') || '[]');
+      const schedules: Schedule[] = JSON.parse(localStorage.getItem('schedules') || '[]');
+      const allHomeworks: Homework[] = JSON.parse(localStorage.getItem('homeworks') || '[]');
 
-    if (students.length > 0) {
-      setGrades(students[0].grades || {});
+      const cls = classes.find(c => c.id === currentStudent.classId);
+      setMyClass(cls || null);
+
+      if (cls) {
+        const classSchedule = schedules.filter(s => s.classId === cls.id);
+        setSchedule(classSchedule);
+        const classHomework = allHomeworks.filter(h => h.classId === cls.id);
+        setHomeworks(classHomework);
+      }
     }
-  }, []);
+  }, [userId]);
 
   const calculateAverage = () => {
-    const allGrades = Object.values(grades).flat() as number[];
+    if (!student || !student.grades) return 'Н/Д';
+    const allGrades = Object.values(student.grades).flat() as number[];
     if (allGrades.length === 0) return 'Н/Д';
     return (allGrades.reduce((a, b) => a + b, 0) / allGrades.length).toFixed(1);
   };
+
+  if (!student) {
+    return (
+      <div className="text-center py-20">
+        <Icon name="UserX" size={64} className="mx-auto mb-4 opacity-50" />
+        <p className="text-muted-foreground">Данные ученика не найдены</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -97,7 +115,6 @@ const StudentDashboard = () => {
                         <div className="flex justify-between items-start">
                           <div className="space-y-1">
                             <p className="font-medium">{item.subject}</p>
-                            <p className="text-sm text-muted-foreground">{item.teacher}</p>
                           </div>
                           <div className="text-right">
                             <Badge variant="outline">{item.day}</Badge>
@@ -159,14 +176,14 @@ const StudentDashboard = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {Object.keys(grades).length === 0 ? (
+              {Object.keys(student.grades).length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <Icon name="FileX" size={48} className="mx-auto mb-2 opacity-50" />
                   <p>Пока нет оценок</p>
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {Object.entries(grades).map(([subject, marks]) => {
+                  {Object.entries(student.grades).map(([subject, marks]) => {
                     const avg = (marks as number[]).length > 0 
                       ? ((marks as number[]).reduce((a, b) => a + b, 0) / (marks as number[]).length).toFixed(1)
                       : 'Н/Д';

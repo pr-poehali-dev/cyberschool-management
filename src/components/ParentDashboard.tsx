@@ -2,45 +2,108 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Icon from '@/components/ui/icon';
+import type { Parent, Student, Class, Schedule, Homework } from '@/types';
 
-const ParentDashboard = () => {
-  const [child, setChild] = useState<any>(null);
-  const [childClass, setChildClass] = useState<any>(null);
-  const [schedule, setSchedule] = useState<any[]>([]);
-  const [homeworks, setHomeworks] = useState<any[]>([]);
+interface Props {
+  userId: string;
+}
+
+const ParentDashboard = ({ userId }: Props) => {
+  const [parent, setParent] = useState<Parent | null>(null);
+  const [children, setChildren] = useState<Student[]>([]);
+  const [selectedChildId, setSelectedChildId] = useState<string>('');
+  const [childClass, setChildClass] = useState<Class | null>(null);
+  const [schedule, setSchedule] = useState<Schedule[]>([]);
+  const [homeworks, setHomeworks] = useState<Homework[]>([]);
 
   useEffect(() => {
-    const students = JSON.parse(localStorage.getItem('students') || '[]');
-    const classes = JSON.parse(localStorage.getItem('classes') || '[]');
-    const schedules = JSON.parse(localStorage.getItem('schedules') || '[]');
-    const allHomeworks = JSON.parse(localStorage.getItem('homeworks') || '[]');
+    const parents: Parent[] = JSON.parse(localStorage.getItem('parents') || '[]');
+    const currentParent = parents.find(p => p.id === userId);
+    setParent(currentParent || null);
 
-    if (students.length > 0) {
-      const studentData = students[0];
-      setChild(studentData);
-      
-      const cls = classes.find((c: any) => c.id === studentData.classId);
-      setChildClass(cls);
+    if (currentParent) {
+      const students: Student[] = JSON.parse(localStorage.getItem('students') || '[]');
+      const parentChildren = students.filter(s => currentParent.childrenIds.includes(s.id));
+      setChildren(parentChildren);
+
+      if (parentChildren.length > 0) {
+        setSelectedChildId(parentChildren[0].id);
+        loadChildData(parentChildren[0].id, students);
+      }
+    }
+  }, [userId]);
+
+  const loadChildData = (childId: string, allStudents?: Student[]) => {
+    const students: Student[] = allStudents || JSON.parse(localStorage.getItem('students') || '[]');
+    const child = students.find(s => s.id === childId);
+
+    if (child) {
+      const classes: Class[] = JSON.parse(localStorage.getItem('classes') || '[]');
+      const schedules: Schedule[] = JSON.parse(localStorage.getItem('schedules') || '[]');
+      const allHomeworks: Homework[] = JSON.parse(localStorage.getItem('homeworks') || '[]');
+
+      const cls = classes.find(c => c.id === child.classId);
+      setChildClass(cls || null);
 
       if (cls) {
-        const classSchedule = schedules.filter((s: any) => s.classId === cls.id);
+        const classSchedule = schedules.filter(s => s.classId === cls.id);
         setSchedule(classSchedule);
-        const classHomework = allHomeworks.filter((h: any) => h.classId === cls.id);
+        const classHomework = allHomeworks.filter(h => h.classId === cls.id);
         setHomeworks(classHomework);
       }
     }
-  }, []);
+  };
 
-  const calculateAverage = () => {
+  const handleChildChange = (childId: string) => {
+    setSelectedChildId(childId);
+    loadChildData(childId);
+  };
+
+  const calculateAverage = (child: Student) => {
     if (!child || !child.grades) return 'Н/Д';
     const allGrades = Object.values(child.grades).flat() as number[];
     if (allGrades.length === 0) return 'Н/Д';
     return (allGrades.reduce((a, b) => a + b, 0) / allGrades.length).toFixed(1);
   };
 
+  if (!parent || children.length === 0) {
+    return (
+      <div className="text-center py-20">
+        <Icon name="UserX" size={64} className="mx-auto mb-4 opacity-50" />
+        <p className="text-muted-foreground">Данные не найдены</p>
+      </div>
+    );
+  }
+
+  const currentChild = children.find(c => c.id === selectedChildId);
+
   return (
     <div className="space-y-6 animate-fade-in">
+      {children.length > 1 && (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-4">
+              <Icon name="Users" size={24} className="text-primary" />
+              <div className="flex-1">
+                <label className="text-sm font-medium mb-2 block">Выберите ребёнка</label>
+                <Select value={selectedChildId} onValueChange={handleChildChange}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {children.map(child => (
+                      <SelectItem key={child.id} value={child.id}>{child.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="hover:shadow-lg transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -48,7 +111,7 @@ const ParentDashboard = () => {
             <Icon name="UserCircle" className="text-primary" size={20} />
           </CardHeader>
           <CardContent>
-            <div className="text-xl font-bold">{child?.name || 'Н/Д'}</div>
+            <div className="text-xl font-bold">{currentChild?.name || 'Н/Д'}</div>
             <p className="text-sm text-muted-foreground">{childClass?.name}</p>
           </CardContent>
         </Card>
@@ -58,7 +121,7 @@ const ParentDashboard = () => {
             <Icon name="TrendingUp" className="text-secondary" size={20} />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{calculateAverage()}</div>
+            <div className="text-3xl font-bold">{currentChild ? calculateAverage(currentChild) : 'Н/Д'}</div>
             <p className="text-sm text-muted-foreground">Средний балл</p>
           </CardContent>
         </Card>
@@ -89,7 +152,7 @@ const ParentDashboard = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {!child || !child.grades || Object.keys(child.grades).length === 0 ? (
+              {!currentChild || !currentChild.grades || Object.keys(currentChild.grades).length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <Icon name="FileX" size={48} className="mx-auto mb-2 opacity-50" />
                   <p>Пока нет оценок</p>
@@ -101,20 +164,20 @@ const ParentDashboard = () => {
                       <div className="flex justify-between items-center">
                         <div>
                           <p className="text-sm text-muted-foreground">Общая успеваемость</p>
-                          <p className="text-3xl font-bold">{calculateAverage()}</p>
+                          <p className="text-3xl font-bold">{calculateAverage(currentChild)}</p>
                         </div>
                         <Badge 
-                          variant={Number(calculateAverage()) >= 4 ? 'default' : 'secondary'}
+                          variant={Number(calculateAverage(currentChild)) >= 4 ? 'default' : 'secondary'}
                           className="text-lg px-4 py-2"
                         >
-                          {Number(calculateAverage()) >= 4 ? 'Отлично' : 'Хорошо'}
+                          {Number(calculateAverage(currentChild)) >= 4 ? 'Отлично' : 'Хорошо'}
                         </Badge>
                       </div>
                     </CardContent>
                   </Card>
 
                   <div className="space-y-3">
-                    {Object.entries(child.grades).map(([subject, marks]) => {
+                    {Object.entries(currentChild.grades).map(([subject, marks]) => {
                       const avg = (marks as number[]).length > 0 
                         ? ((marks as number[]).reduce((a, b) => a + b, 0) / (marks as number[]).length).toFixed(1)
                         : 'Н/Д';
@@ -182,7 +245,6 @@ const ParentDashboard = () => {
                             <div key={item.id} className="flex justify-between items-center p-2 bg-muted/50 rounded">
                               <div>
                                 <p className="font-medium text-sm">{item.subject}</p>
-                                <p className="text-xs text-muted-foreground">{item.teacher}</p>
                               </div>
                               <Badge variant="outline">{item.time}</Badge>
                             </div>
