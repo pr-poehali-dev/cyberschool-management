@@ -257,9 +257,9 @@ const AdminDashboard = () => {
                         <TableCell className="font-medium">{teacher.name}</TableCell>
                         <TableCell><Badge variant="outline">{teacher.login}</Badge></TableCell>
                         <TableCell><Badge variant="secondary">{teacher.password}</Badge></TableCell>
-                        <TableCell>{teacher.subjects.join(', ')}</TableCell>
+                        <TableCell>{(teacher.subjects || []).join(', ')}</TableCell>
                         <TableCell>
-                          {teacher.classIds.map(cId => {
+                          {(teacher.classIds || []).map(cId => {
                             const cls = classes.find(c => c.id === cId);
                             return cls ? <Badge key={cId} variant="outline" className="mr-1">{cls.name}</Badge> : null;
                           })}
@@ -365,7 +365,7 @@ const AdminDashboard = () => {
                       <TableRow key={parent.id}>
                         <TableCell className="font-medium">{parent.name}</TableCell>
                         <TableCell>
-                          {parent.childrenIds.map(cId => {
+                          {(parent.childrenIds || []).map(cId => {
                             const child = students.find(s => s.id === cId);
                             return child ? <Badge key={cId} variant="outline" className="mr-1">{child.name}</Badge> : null;
                           })}
